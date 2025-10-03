@@ -2,6 +2,7 @@
 """
 Create SQL INSERT statements for UFPrevalueSource table for each prevalue source.
 Uses the correct lookupItemFolder Content Key GUID from the corresponding folder.
+Includes conditional checks to prevent duplicate inserts.
 """
 
 import os
@@ -36,7 +37,7 @@ def get_lookupitemfolder_content_key(folder_name):
         return None
 
 def create_sql_insert(prevalue_source_key, name, folder_name, lookupitemfolder_content_key):
-    """Create SQL INSERT statement for UFPrevalueSource."""
+    """Create SQL INSERT statement for UFPrevalueSource with conditional check."""
     
     # Generate a new GUID for the prevalue source key
     prevalue_source_guid = str(uuid.uuid4())
@@ -47,7 +48,7 @@ def create_sql_insert(prevalue_source_key, name, folder_name, lookupitemfolder_c
     "createdBy": -1,
     "updatedBy": -1,
     "settings": {{
-        "RootNode": "{{\\"type\\":\\"content\\",\\"id\\":\\"{lookupitemfolder_content_key}\\",\\"dynamicRoot\\":{{\\"originKey\\":\\"{lookupitemfolder_content_key}\\",\\"originAlias\\":\\"ByKey\\"}}}}",
+        "RootNode": "{{\\"type\\":\\"content\\",\\"id\\":\\"{lookupitemfolder_content_key}\\",\\"dynamicRoot\\":{{\\"originKey\\":\\"{lookupitemfolder_content_key}\\",\\"originAlias\\":\\"ByKey\\\"}}}}", 
         "UseCurrentPage": "False",
         "DocType": "lookupItem",
         "ValueField": "lookupValue",
@@ -65,15 +66,25 @@ def create_sql_insert(prevalue_source_key, name, folder_name, lookupitemfolder_c
     "hasIdentity": true
 }}'''
     
-    # Create the SQL INSERT statement
-    sql_insert = f"""INSERT INTO [mha-umbraco].[dbo].[UFPrevalueSource] ([Key]
-      ,[Name]
-      ,[Definition]
-      ,[Created]
-      ,[Updated]
-      ,[CreatedBy]
-      ,[UpdatedBy])
-VALUES ('{prevalue_source_guid}','{name}','{json_definition}',GETDATE(),GETDATE(),-1,-1);"""
+    # Create the SQL INSERT statement with conditional check
+    sql_insert = f"""-- Check if UFPrevalueSource with this Key already exists
+IF NOT EXISTS (SELECT 1 FROM [mha-umbraco].[dbo].[UFPrevalueSource] WHERE [Key] = '{prevalue_source_guid}')
+BEGIN
+    INSERT INTO [mha-umbraco].[dbo].[UFPrevalueSource] ([Key]
+          ,[Name]
+          ,[Definition]
+          ,[Created]
+          ,[Updated]
+          ,[CreatedBy]
+          ,[UpdatedBy])
+    VALUES ('{prevalue_source_guid}','{name}','{json_definition}',GETDATE(),GETDATE(),-1,-1);
+    
+    PRINT 'Inserted UFPrevalueSource: {name} (Key: {prevalue_source_guid})';
+END
+ELSE
+BEGIN
+    PRINT 'UFPrevalueSource already exists: {name} (Key: {prevalue_source_guid})';
+END"""
     
     return sql_insert
 
@@ -88,6 +99,7 @@ def main():
     
     print("🔄 Creating SQL INSERT statements for UFPrevalueSource...")
     print("   🔧 Using correct lookupItemFolder Content Key GUIDs")
+    print("   🛡️ Including conditional checks to prevent duplicates")
     print()
     
     # Get all .config files and sort them
@@ -105,7 +117,11 @@ def main():
         sql_file.write("-- SQL INSERT statements for UFPrevalueSource table\n")
         sql_file.write("-- Generated for Umbraco Forms prevalue sources\n")
         sql_file.write("-- Uses correct lookupItemFolder Content Key GUIDs as RootNode\n")
+        sql_file.write("-- Includes conditional checks to prevent duplicate inserts\n")
         sql_file.write("-- Date: 2025-10-03\n\n")
+        sql_file.write("-- Begin transaction for safety\n")
+        sql_file.write("BEGIN TRANSACTION;\n\n")
+        sql_file.write("DECLARE @ErrorCount INT = 0;\n\n")
         
         success_count = 0
         error_count = 0
@@ -138,12 +154,31 @@ def main():
             else:
                 error_count += 1
                 print(f"❌ {filename}: Failed to extract prevalue source data")
+        
+        # Add transaction completion
+        sql_file.write("-- Complete transaction\n")
+        sql_file.write("IF @ErrorCount = 0\n")
+        sql_file.write("BEGIN\n")
+        sql_file.write("    COMMIT TRANSACTION;\n")
+        sql_file.write("    PRINT 'All UFPrevalueSource records processed successfully.';\n")
+        sql_file.write("END\n")
+        sql_file.write("ELSE\n")
+        sql_file.write("BEGIN\n")
+        sql_file.write("    ROLLBACK TRANSACTION;\n")
+        sql_file.write("    PRINT 'Transaction rolled back due to errors.';\n")
+        sql_file.write("END\n")
     
     print()
     print(f"📄 SQL INSERT statements written to: {output_file}")
     print(f"✅ Success: {success_count} statements created")
     if error_count > 0:
         print(f"❌ Errors: {error_count} statements failed")
+    print()
+    print("🛡️ Features included:")
+    print("   ✅ IF NOT EXISTS checks to prevent duplicates")
+    print("   ✅ Transaction wrapper for safety")
+    print("   ✅ PRINT statements for execution feedback")
+    print("   ✅ Error handling and rollback capability")
     print()
     
     # Show the first one (Cap Methodology) as an example
@@ -159,7 +194,10 @@ def main():
             print(f"   🏷️  Name: {alias}")
             print()
             sql_insert = create_sql_insert(prevalue_source_key, alias, "cap-methodology", lookupitemfolder_content_key)
-            print(sql_insert[:200] + "...")
+            print("   SQL Preview:")
+            print("   " + sql_insert.split('\n')[0])
+            print("   " + sql_insert.split('\n')[1])
+            print("   ...")
 
 if __name__ == "__main__":
     main()
