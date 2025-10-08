@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create PC1 lookup items with the provided text/value pairs.
+Create PC2 lookup items with the provided text/value pairs.
 """
 
 import os
@@ -42,9 +42,9 @@ def create_lookup_item_config(text, value, sort_order, parent_key="a1b2c3d4-e5f6
     return xml_content, alias, item_key
 
 def main():
-    """Main function to create all PC1 lookup items."""
+    """Main function to create all PC2 lookup items."""
     
-    # PC1 lookup items data
+    # PC2 lookup items data
     pc1_data = [
         ("On Dialysis", "PC2_dialysis"),
         ("Incontinent Bladder", "PC2_incontinentBladder"),
@@ -57,13 +57,13 @@ def main():
         ("ECMO/LVAD/IABP", "PC2_ecmo")
     ]
     
-    pc1_dir = "adverse-health-events/pc1"
+    pc2_dir = "adverse-health-events/pc2"
     
-    if not os.path.exists(pc1_dir):
-        os.makedirs(pc1_dir)
-        print(f"📁 Created directory: {pc1_dir}")
+    if not os.path.exists(pc2_dir):
+        os.makedirs(pc2_dir)
+        print(f"📁 Created directory: {pc2_dir}")
     
-    print("🔄 Creating PC1 lookup items...")
+    print("🔄 Creating PC2 lookup items...")
     print(f"📊 Total items to create: {len(pc1_data)}")
     print()
     
@@ -77,7 +77,7 @@ def main():
         # Create filename from text (safe filename)
         filename = text.replace(" ", " ").replace("/", "-").replace(":", "")
         config_filename = f"{filename}.config"
-        config_path = os.path.join(pc1_dir, config_filename)
+        config_path = os.path.join(pc2_dir, config_filename)
         
         # Write the config file
         with open(config_path, 'w', encoding='utf-8') as f:
@@ -100,11 +100,11 @@ def main():
         print()
     
     print("📋 Summary:")
-    print(f"✅ Created {len(created_items)} PC1 lookup items")
-    print(f"📁 Directory: {pc1_dir}")
+    print(f"✅ Created {len(created_items)} PC2 lookup items")
+    print(f"📁 Directory: {pc2_dir}")
     print()
     
-    print("🎯 PC1 Lookup Items Created:")
+    print("🎯 PC2 Lookup Items Created:")
     for item in created_items:
         print(f"   • {item['text']} → {item['value']}")
     
@@ -112,4 +112,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
